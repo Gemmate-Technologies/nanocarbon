@@ -1,0 +1,51 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: nanocarbon
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Matteo
+    family-names: Alberghini
+    email: matteo.alberghini@gemmate-technologies.com
+    affiliation: Gemmate Technologies srl
+    orcid: 'https://orcid.org/0000-0002-3716-9163'
+  - given-names: Giacomo
+    family-names: Pierotti
+    email: giacomo.pierotti@gemmate-technologies.com
+    affiliation: Gemmate Technologies srl
+    orcid: 'https://orcid.org/0000-0003-1973-0612'
+  - name: Gemmate Technologies srl
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.23315448
+    description: Data of the accompanying manuscript (Zenodo)
+repository-code: 'https://github.com/Gemmate-Technologies/nanocarbon'
+abstract: >-
+  nanocarbon is a Python library which builds atomistic models of
+  amorphous nanoporous carbon from a specified pore size distribution,
+  pore volume fraction and carbon density. The pore size distribution may
+  be an analytical form or a tabulated curve, digitized from a measurement
+  or computed on another structure. Pores drawn from it are placed first,
+  carbon is then grown around them ring by ring up to the target density,
+  and each structure is written as LAMMPS input for a molecular dynamics
+  anneal, with the pores held as walls. The same routines characterize any
+  structure, constructed or imported from a trajectory, through its pore
+  size distribution, porosity, accessible surface and volume, radial
+  distribution function, ring statistics, coordination and pore
+  connectivity. When the construction parameters are not known, a particle
+  swarm optimizer recovers them from target quantities, measured on a
+  laboratory sample or computed on a reference structure, such as the
+  density, the pore size distribution, the porosity, the accessible
+  surface area, the pore volume and the radial distribution function.
+keywords:
+  - nanoporous carbon
+  - amorphous carbon
+  - inverse design
+  - pore size distribution
+  - molecular dynamics
+license: CC-BY-NC-SA-4.0
+version: 1.0.0

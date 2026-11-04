@@ -1,0 +1,38 @@
+[project]
+name = "nanocarbon"
+version = "1.0.0"
+description = "Atomistic models of amorphous nanoporous carbon with explicit pores: generation, LAMMPS export and structural analysis."
+authors = [
+  {name = "Matteo Alberghini", email = "matteo.alberghini@gemmate-technologies.com"},
+  {name = "Giacomo Pierotti", email = "giacomo.pierotti@gemmate-technologies.com"},
+]
+readme = "README.md"
+license = "CC-BY-NC-SA-4.0"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+dependencies = [
+  "numpy>=2.0",
+  "scipy>=1.13",
+  "scikit-learn>=1.4.2",
+  "scikit-image>=0.24",
+]
+keywords = ["amorphous carbon", "porous carbon", "pore size distribution", "molecular dynamics", "LAMMPS"]
+
+[project.urls]
+Repository = "https://github.com/Gemmate-Technologies/nanocarbon"
+Data = "https://doi.org/10.5281/zenodo.23315448"
+
+[dependency-groups]
+validation = ["MDAnalysis", "ovito", "pandas==3.0.1"]
+dev = ["pytest", "ipykernel", "matplotlib==3.10.8", "pandas==3.0.1", "seaborn>=0.13.2"]
+
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+markers = [
+    "slow: tests > 60 s. Run by default; skip with `pytest -m 'not slow'`.",
+]

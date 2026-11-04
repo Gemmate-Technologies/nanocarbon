@@ -1,0 +1,113 @@
+# SPDX-License-Identifier: CC-BY-NC-SA-4.0
+# Copyright (c) 2026 Gemmate Technologies s.r.l.
+#
+# Anneal deck for the nanocarbon-generated structures.
+#
+#   mpirun lmp -in anneal.in -var NCDATA 71901742_r0 -var T 2500 -var PS 20 -var TAG anneal_r0
+#
+#   NCDATA  run stem: reads structures/carbon_<NCDATA>.data and structures/pores_<NCDATA>.pores_settings,
+#           as written by utilities/convert_to_atomic.py (atomic style, wall epsilon in eV)
+#   T       hold temperature in K
+#   PS      hold duration in ps
+#   TAG     output prefix
+#
+# LAMMPS stable_2Aug2023 freezes the energy of `fix wall/region` at its first value (forces are
+# correct; fixed upstream in 23d4bfe). On that release `pe` is right only on the first evaluation
+# after the walls appear, so gate 3 and the final print read the EDIP pair energy instead.
+
+units           metal
+atom_style      atomic          # NO bonds: EDIP is reactive and rebuilds them from geometry.
+boundary        p p p           
+newton          on
+
+kim init        EDIP_LAMMPS_Marks_2000_C__MO_374144505645_000 metal
+
+read_data       structures/carbon_${NCDATA}.data
+kim interactions C
+
+neighbor        2.0 bin
+neigh_modify    delay 10 every 2 check yes
+
+compute         epair all pe pair       # EDIP only: unaffected by the wall-energy defect above
+
+thermo          200
+thermo_style    custom step time temp pe c_epair ke etotal press density
+thermo_modify   flush yes
+
+# ---------------------------------------------------------------- gate 1
+# PE before the walls exist. 
+run             0
+variable        pe_per_atom equal pe/atoms
+print           "### GATE 1  PE/atom before walls = ${pe_per_atom} eV"
+
+# ---------------------------------------------------------------- pores
+# One `region ... sphere ... side out` + one `fix wall/region lj126` per pore,
+# including the periodic images a LAMMPS region cannot generate itself. The walls are
+# WCA-cut (see utilities/convert_to_atomic.py) so they only push; a pore is a void and has nothing
+# in it to attract carbon.
+include         structures/pores_${NCDATA}.pores_settings
+
+# The .pores_settings also carries a `fix_modify ... energy yes` per wall. Without it
+# the wall energy stays out of `pe`.
+# Gate 2 should now sit slightly ABOVE gate 1 (walls are repulsive-only). A large jump
+# means atoms are buried in the repulsive branch.
+run             0
+variable        pe_walls equal pe/atoms
+print           "### GATE 2  PE/atom after walls = ${pe_walls} eV"
+
+# ---------------------------------------------------------------- minimize
+# The construct was built against a different (harmonic + LJ or Tersoff) potential, so it
+# carries strain that EDIP does not recognise. Relax it before heating, or that
+# strain converts to kinetic energy and the sample has local T spikes.
+# FIRE uses forces only; a conjugate-gradient line search reads the energy and, with the
+# frozen wall energy above, stops at its first iteration without moving an atom.
+min_style       fire
+minimize        1.0e-8 1.0e-10 20000 200000
+
+variable        pe_min equal c_epair/atoms
+print           "### GATE 3  EDIP PE/atom after minimise = ${pe_min} eV"
+
+write_data      ${TAG}_minimised.data
+
+# ---------------------------------------------------------------- anneal
+# dt = 0.1 fs. NVT: density is a construction constraint here, and NPT
+# would let the box relax and collapse the pores by volume change.
+timestep        0.0001
+
+variable        nhold  equal round(${PS}*10000)
+variable        nquench equal round((${T}-300)*80) # 80 steps/K approx. 1.25e14 K/s
+
+velocity        all create 300.0 4928459 mom yes rot yes dist gaussian
+
+dump            d1 all custom 200 ${TAG}_T${T}.lammpstrj id type x y z
+dump_modify     d1 sort id
+
+# ---------------------------------------------------------------- burn-in
+# The construct is approx. 50% 2-coordinated and curing those chains into rings is
+# exothermic: it releases energy and in an adiabatic periodic box is  leads to >3500 K.
+# Nose-Hoover cannot absorb that. Langevin gives every atom its own damping channel, 
+# which is what a local burst needs. 
+# Ramping from 300 K keeps the excursion off the setpoint.
+fix             bi1 all nve
+fix             bi2 all langevin 300.0 ${T} 0.01 71773 zero yes
+run             10000
+unfix           bi2
+unfix           bi1
+
+fix             hold all nvt temp ${T} ${T} 0.01
+run             ${nhold}
+unfix           hold
+
+# Quench to 300 K: coordination must be read cold.
+fix             quench all nvt temp ${T} 300.0 0.01
+run             ${nquench}
+unfix           quench
+
+fix             cold all nvt temp 300.0 300.0 0.01
+run             5000
+unfix           cold
+
+variable        pe_end equal c_epair/atoms
+print           "### DONE  EDIP PE/atom final = ${pe_end} eV  (T = ${T} K, hold = ${PS} ps)"
+
+write_data      ${TAG}_T${T}_final.data
